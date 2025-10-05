@@ -1,0 +1,1725 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>PSUR/PMSR Voice Ops</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root { 
+      --bg:#0b0d10; 
+      --card:#12161b; 
+      --muted:#8892a6; 
+      --fg:#e6edf3; 
+      --acc:#5dd4ff; 
+      --success:#4ade80; 
+      --warning:#fbbf24; 
+      --error:#f87171;
+      --primary:#1f88c9;
+      --primary-dark:#166297;
+      --border:#1d2430;
+      --hover:#1a1f29;
+    }
+    
+    * { box-sizing: border-box; }
+    
+    body { 
+      margin:0; 
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      background:var(--bg); 
+      color:var(--fg); 
+      line-height: 1.5;
+    }
+    
+    header { 
+      padding:16px 20px; 
+      border-bottom:1px solid var(--border); 
+      display:flex; 
+      gap:12px; 
+      align-items:center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    h1 { 
+      margin:0; 
+      font-size:18px; 
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .pill { 
+      padding:4px 10px; 
+      border-radius:999px; 
+      background:var(--border); 
+      color:#cbd5e1; 
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    
+    .pill.idle { background: var(--border); }
+    .pill.connecting { background: var(--warning); color: #000; }
+    .pill.connected { background: var(--success); color: #000; }
+    .pill.error { background: var(--error); }
+    
+    main { 
+      display:flex;
+      flex-direction:column;
+      gap:18px; 
+      padding:18px;
+      max-width: 100%;
+      margin: 0 auto;
+      height: calc(100vh - 70px);
+      overflow: hidden;
+    }
+    
+    section { 
+      background:var(--card); 
+      border:1px solid var(--border); 
+      border-radius:14px; 
+      padding:20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transition: box-shadow 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+    }
+    
+    section:hover {
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    }
+    
+    section h2 { 
+      font-size:16px; 
+      margin:0 0 16px; 
+      color:#cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .row { 
+      display:flex; 
+      gap:10px; 
+      align-items:center; 
+      flex-wrap:wrap; 
+      margin-bottom:16px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    
+    label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    
+    input, select, button, textarea { 
+      background:#0f1318; 
+      color:var(--fg); 
+      border:1px solid var(--border); 
+      border-radius:8px; 
+      padding:10px 12px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--acc);
+      box-shadow: 0 0 0 2px rgba(93, 212, 255, 0.2);
+    }
+    
+    button { 
+      cursor:pointer;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    
+    button:hover {
+      background: var(--hover);
+      transform: translateY(-1px);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button.primary { 
+      background:linear-gradient(180deg,var(--primary),var(--primary-dark)); 
+      border:0;
+      color: white;
+    }
+    
+    button.primary:hover {
+      background:linear-gradient(180deg,var(--primary-dark),#104468);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    button:disabled:hover {
+      transform: none;
+      background: var(--primary);
+    }
+    
+    table { 
+      width:100%; 
+      border-collapse:collapse; 
+      font-size:12.5px;
+    }
+    
+    th, td { 
+      text-align:left; 
+      padding:8px 6px; 
+      border-bottom:1px solid var(--border);
+    }
+    
+    th { 
+      color:#aeb8cc; 
+      font-weight:600; 
+      position:sticky; 
+      top:0; 
+      background:var(--card);
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    th:hover {
+      color: var(--fg);
+    }
+    
+    tr:hover {
+      background: rgba(255,255,255,0.02);
+    }
+    
+    #log { 
+      width:100%; 
+      height:170px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      resize: vertical;
+    }
+    
+    .dialog-container {
+      width: 100%;
+      height: 170px;
+      background: #0f1318;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow-y: auto;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .dialog-entry {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px;
+      border-radius: 6px;
+      border-left: 3px solid transparent;
+    }
+    
+    .dialog-entry.user {
+      background: rgba(93, 212, 255, 0.1);
+      border-left-color: var(--acc);
+      align-self: flex-end;
+      max-width: 80%;
+    }
+    
+    .dialog-entry.assistant {
+      background: rgba(74, 222, 128, 0.1);
+      border-left-color: var(--success);
+      align-self: flex-start;
+      max-width: 80%;
+    }
+    
+    .dialog-entry.tool_call {
+      background: rgba(251, 191, 36, 0.1);
+      border-left-color: var(--warning);
+      align-self: center;
+      width: 100%;
+    }
+    
+    .dialog-entry.tool_error {
+      background: rgba(248, 113, 113, 0.1);
+      border-left-color: var(--error);
+      align-self: center;
+      width: 100%;
+    }
+    
+    .dialog-entry.system {
+      background: rgba(139, 146, 166, 0.1);
+      border-left-color: var(--muted);
+      align-self: center;
+      width: 100%;
+      font-size: 12px;
+    }
+    
+    .dialog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    
+    .dialog-content {
+      color: var(--fg);
+      line-height: 1.4;
+    }
+    
+    .dialog-tool-details {
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      background: rgba(0, 0, 0, 0.2);
+      padding: 4px 6px;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+    
+    .dialog-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+      font-style: italic;
+    }
+    
+    small.muted { 
+      color:var(--muted); 
+      font-size: 13px;
+      display: block;
+      margin-bottom: 12px;
+    }
+    
+    .audio-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+    }
+    
+    .audio-level {
+      flex: 1;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    
+    .audio-level-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--acc);
+      transition: width 0.1s ease;
+    }
+    
+    .voice-agent-section {
+      display: none;
+    }
+    
+    .table-container {
+      overflow: auto;
+      max-height: none;
+      border: none;
+      border-radius: 0;
+      position: relative;
+    }
+    
+    .cards-grid-wrapper {
+      flex: 1;
+      overflow: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      min-height: 0;
+    }
+    
+    .cards-grid-wrapper::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(16, minmax(120px, 1fr));
+      gap: 8px;
+      padding: 16px 0;
+    }
+    
+    .grid-header {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border: 1px solid var(--border);
+      padding: 12px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: white;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .grid-header:hover {
+      background: linear-gradient(135deg, var(--primary-dark), #104468);
+      box-shadow: 0 2px 8px rgba(31, 136, 201, 0.3);
+    }
+    
+    .grid-header:nth-child(16n+1) { background: linear-gradient(135deg, #1f88c9, #166297); }
+    .grid-header:nth-child(16n+2) { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+    .grid-header:nth-child(16n+3) { background: linear-gradient(135deg, #ec4899, #db2777); }
+    .grid-header:nth-child(16n+4) { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .grid-header:nth-child(16n+5) { background: linear-gradient(135deg, #10b981, #059669); }
+    .grid-header:nth-child(16n+6) { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .grid-header:nth-child(16n+7) { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+    .grid-header:nth-child(16n+8) { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .grid-header:nth-child(16n+9) { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+    .grid-header:nth-child(16n+10) { background: linear-gradient(135deg, #f97316, #ea580c); }
+    .grid-header:nth-child(16n+11) { background: linear-gradient(135deg, #a855f7, #9333ea); }
+    .grid-header:nth-child(16n+12) { background: linear-gradient(135deg, #84cc16, #65a30d); }
+    .grid-header:nth-child(16n+13) { background: linear-gradient(135deg, #f43f5e, #e11d48); }
+    .grid-header:nth-child(16n+14) { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .grid-header:nth-child(16n+15) { background: linear-gradient(135deg, #eab308, #ca8a04); }
+    .grid-header:nth-child(16n+16) { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    
+    .report-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 50px;
+      overflow: hidden;
+      text-align: center;
+      font-size: 13px;
+      color: var(--fg);
+    }
+    
+    .report-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border-color: var(--acc);
+      background: var(--hover);
+    }
+    
+    .report-card.expanded {
+      height: auto;
+      white-space: normal;
+      word-wrap: break-word;
+    }
+    
+    .report-card:not(.expanded) {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .card-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .card-id-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .card-td {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--acc);
+    }
+    
+    .card-psur {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    
+    .card-status {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .card-status.not-started, .card-status.Not\\ started {
+      background: rgba(248, 113, 113, 0.2);
+      color: var(--error);
+    }
+    
+    .card-status.assigned, .card-status.Assigned {
+      background: rgba(251, 191, 36, 0.2);
+      color: var(--warning);
+    }
+    
+    .card-status.in-progress, .card-status.In\\ Progress {
+      background: rgba(93, 212, 255, 0.2);
+      color: var(--acc);
+    }
+    
+    .card-status.completed, .card-status.Completed, .card-status.released, .card-status.Released {
+      background: rgba(74, 222, 128, 0.2);
+      color: var(--success);
+    }
+    
+    .card-product {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fg);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .report-card.expanded .card-product {
+      white-space: normal;
+    }
+    
+    .card-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      flex: 1;
+    }
+    
+    .card-field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    
+    .card-field-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    
+    .card-field-value {
+      font-size: 13px;
+      color: var(--fg);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+    
+    .report-card.expanded .card-field-value {
+      white-space: normal;
+      word-wrap: break-word;
+    }
+    
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+    }
+    
+    .card-due {
+      color: var(--acc);
+      font-weight: 600;
+    }
+    
+    .card-due.overdue {
+      color: var(--error);
+    }
+    
+    .card-due.soon {
+      color: var(--warning);
+    }
+    
+    .card-writer {
+      color: var(--muted);
+    }
+    
+    .table-loading {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      border-radius: 10px;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border);
+      border-top-color: var(--acc);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .status-badge {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .status-released { background: var(--success); color: #000; }
+    .status-assigned { background: var(--warning); color: #000; }
+    .status-in-progress { background: var(--acc); color: #000; }
+    
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--error); }
+    .toast.warning { border-left: 4px solid var(--warning); }
+    
+    .clear-log {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .clear-log:hover {
+      color: var(--fg);
+    }
+    
+    .log-container {
+      position: relative;
+    }
+    
+    .refresh-btn {
+      background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+      border: 1px solid var(--border);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      margin-left: auto;
+      font-weight: 500;
+    }
+    
+    .refresh-btn:hover {
+      background: linear-gradient(180deg, var(--primary-dark), #104468);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(31, 136, 201, 0.3);
+    }
+    
+    .refresh-btn i {
+      transition: transform 0.3s ease;
+    }
+    
+    .refresh-btn.spinning i {
+      animation: spin 0.6s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    .refresh-btn {
+      background: var(--primary);
+      border: 1px solid var(--border);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      margin-left: auto;
+    }
+    
+    .refresh-btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+    
+    .refresh-btn i {
+      transition: transform 0.3s ease;
+    }
+    
+    .refresh-btn.spinning i {
+      animation: spin 0.6s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 1024px) {
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1><i class="fas fa-microphone"></i> PSUR/PMSR Voice Ops</h1>
+  <span id="status" class="pill idle">idle</span>
+  <div style="margin-left:auto; display:flex; gap:8px;">
+    <button id="testToolBtn"><i class="fas fa-wrench"></i> Test Tool</button>
+    <button id="healthBtn"><i class="fas fa-heartbeat"></i> Health</button>
+    <button id="snapshotBtn"><i class="fas fa-database"></i> Load All</button>
+    <button id="connectBtn" class="primary"><i class="fas fa-phone"></i> Connect</button>
+    <button id="hangupBtn" disabled><i class="fas fa-phone-slash"></i> Hang up</button>
+  </div>
+</header>
+
+<main>
+  <section class="voice-agent-section">
+    <h2><i class="fas fa-headset"></i> Voice Agent</h2>
+    <audio id="remoteAudio" autoplay playsinline></audio>
+    
+    <div class="audio-controls">
+      <i class="fas fa-microphone"></i>
+      <div class="audio-level">
+        <div class="audio-level-bar" id="audioLevelBar"></div>
+      </div>
+      <span id="connectionStatus">Not connected</span>
+    </div>
+    
+    <small class="muted">Tip: "What's due in the next 60 days for Class III?"</small>
+    
+    <div class="log-container">
+      <div class="dialog-container" id="dialogContainer">
+        <div class="dialog-empty">Conversation will appear here...</div>
+      </div>
+      <button class="clear-log" id="clearLogBtn">Clear</button>
+    </div>
+  </section>
+
+  <section>
+    <div style="display: flex; align-items: center; margin-bottom: 16px;">
+      <h2 style="margin: 0;"><i class="fas fa-calendar-alt"></i> Schedule</h2>
+      <button class="refresh-btn" id="refreshBtn" title="Refresh data">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+    
+    <div class="form-group">
+      <div class="row">
+        <div style="flex: 1;">
+          <label>Within</label>
+          <select id="withinDays">
+            <option>30</option>
+            <option selected>60</option>
+            <option>90</option>
+            <option>180</option>
+          </select>
+        </div>
+        <div style="flex: 1;">
+          <label>Class</label>
+          <input id="klass" placeholder="IIa / IIb / III / I…" />
+        </div>
+        <div style="flex: 1;">
+          <label>Writer</label>
+          <input id="writer" placeholder="e.g., Harish" />
+        </div>
+        <div style="flex: 1;">
+          <label>Status</label>
+          <input id="statusFilter" placeholder="Released / Assigned / In Progress…" />
+        </div>
+        <div style="flex: 0.5; display: flex; align-items: flex-end;">
+          <button id="loadBtn"><i class="fas fa-search"></i> Load due</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="row">
+        <input id="q" placeholder="Find TD / PSUR / product / catalog…" style="flex:1" />
+        <button id="findBtn"><i class="fas fa-search"></i> Find</button>
+      </div>
+    </div>
+
+    <div class="cards-grid-wrapper">
+      <div class="cards-grid" id="cardsGrid"></div>
+    </div>
+    
+    <div class="table-container" style="display: none;">
+      <div class="table-loading" id="tableLoading" style="display: none;">
+        <div class="spinner"></div>
+      </div>
+      <table id="scheduleTable">
+        <thead>
+          <tr>
+            <th data-sort="td_number">TD Number <i class="fas fa-sort"></i></th>
+            <th data-sort="psur_number">PSURNumber <i class="fas fa-sort"></i></th>
+            <th data-sort="class">Class <i class="fas fa-sort"></i></th>
+            <th data-sort="type">Type <i class="fas fa-sort"></i></th>
+            <th data-sort="product_name">Product Name <i class="fas fa-sort"></i></th>
+            <th data-sort="catalog_number">Catalog Number <i class="fas fa-sort"></i></th>
+            <th data-sort="writer">Writer <i class="fas fa-sort"></i></th>
+            <th data-sort="email">Email <i class="fas fa-sort"></i></th>
+            <th data-sort="start_period">Start Period <i class="fas fa-sort"></i></th>
+            <th data-sort="end_period">End Period <i class="fas fa-sort"></i></th>
+            <th data-sort="frequency">Frequency <i class="fas fa-sort"></i></th>
+            <th data-sort="due_date">Due Date <i class="fas fa-sort"></i></th>
+            <th data-sort="status">Status <i class="fas fa-sort"></i></th>
+            <th data-sort="canada_needed">Canada Needed <i class="fas fa-sort"></i></th>
+            <th data-sort="canada_status">Canada Status <i class="fas fa-sort"></i></th>
+            <th data-sort="comments">Comments <i class="fas fa-sort"></i></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:20px; padding-top: 16px; border-top: 1px solid var(--border);">
+      <h3 style="font-size:14px; margin:0 0 12px; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-edit"></i> Quick Update
+      </h3>
+      <div class="form-group">
+        <div class="row">
+          <div style="flex: 1;">
+            <label>TD Number</label>
+            <input id="u_row" placeholder="TD Number" />
+          </div>
+          <div style="flex: 1;">
+            <label>Status</label>
+            <input id="u_status" placeholder="Status" />
+          </div>
+          <div style="flex: 1;">
+            <label>Due Date</label>
+            <input id="u_due" placeholder="YYYY-MM-DD or 'late'" />
+          </div>
+          <div style="flex: 1;">
+            <label>Writer</label>
+            <input id="u_writer" placeholder="Writer" />
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="row">
+          <div style="flex: 3;">
+            <label>Comments</label>
+            <input id="u_comments" placeholder="Comments" />
+          </div>
+          <div style="flex: 1; display: flex; align-items: flex-end;">
+            <button id="updateBtn" class="primary"><i class="fas fa-save"></i> Update row</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast">
+  <i class="fas fa-check-circle" id="toastIcon"></i>
+  <span id="toastMessage">Operation completed successfully</span>
+</div>
+
+<script>
+(async function () {
+  const statusEl = document.getElementById('status');
+  const dialogContainer = document.getElementById('dialogContainer');
+  const audioEl = document.getElementById('remoteAudio');
+  const connectBtn = document.getElementById('connectBtn');
+  const hangupBtn = document.getElementById('hangupBtn');
+  const loadBtn = document.getElementById('loadBtn');
+  const healthBtn = document.getElementById('healthBtn');
+  const snapshotBtn = document.getElementById('snapshotBtn');
+  const testToolBtn = document.getElementById('testToolBtn');
+  const clearLogBtn = document.getElementById('clearLogBtn');
+  const audioLevelBar = document.getElementById('audioLevelBar');
+  const connectionStatus = document.getElementById('connectionStatus');
+  const tableLoading = document.getElementById('tableLoading');
+  const toast = document.getElementById('toast');
+  const toastMessage = document.getElementById('toastMessage');
+  const toastIcon = document.getElementById('toastIcon');
+
+  const withinDays = document.getElementById('withinDays');
+  const klass = document.getElementById('klass');
+  const writer = document.getElementById('writer');
+  const statusFilter = document.getElementById('statusFilter');
+
+  const q = document.getElementById('q');
+  const findBtn = document.getElementById('findBtn');
+
+  const tableBody = document.querySelector('#scheduleTable tbody');
+
+  const u_row = document.getElementById('u_row');
+  const u_status = document.getElementById('u_status');
+  const u_due = document.getElementById('u_due');
+  const u_writer = document.getElementById('u_writer');
+  const u_comments = document.getElementById('u_comments');
+
+  let pc, dataChannel, localStream;
+  let sortColumn = null;
+  let sortDirection = 'asc';
+  let ws; // WebSocket for live updates
+  let currentData = []; // Store current table data
+
+  // ========== WebSocket Live Updates ==========
+  function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    
+    ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      log('📡 Live updates connected');
+      showToast('Live updates enabled', 'success');
+    };
+    
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      handleLiveUpdate(message);
+    };
+    
+    ws.onerror = (error) => {
+      log('WebSocket error:', error);
+    };
+    
+    ws.onclose = () => {
+      log('📡 Live updates disconnected');
+      // Reconnect after 3 seconds
+      setTimeout(connectWebSocket, 3000);
+    };
+  }
+  
+  function handleLiveUpdate(message) {
+    const { type, data } = message;
+    
+    if (type === 'dialog') {
+      // Add new dialog entry
+      addDialogEntry(data);
+    } else if (type === 'dialog_clear') {
+      // Clear dialog
+      clearDialog();
+    } else if (type === 'update') {
+      // Update existing record - FORCE FULL RELOAD to ensure consistency
+      const tdNumber = data.td_number;
+      const updates = data.updates;
+      
+      console.log(`🔄 WebSocket update received for ${tdNumber}`, updates);
+      console.log('🔄 FORCING FULL DATA RELOAD');
+      
+      // Just reload everything to be safe
+      fetchAll();
+      showToast(`Updated ${tdNumber}`, 'success');
+      log(`🔄 Live update: ${tdNumber}`, updates);
+    } else if (type === 'add') {
+      // Add new record - FORCE FULL RELOAD
+      console.log(`➕ WebSocket add received for ${data.td_number}`);
+      console.log('🔄 FORCING FULL DATA RELOAD');
+      
+      fetchAll();
+      showToast(`Added ${data.td_number}`, 'success');
+      log(`➕ Live add: ${data.td_number}`, data.record);
+    } else if (type === 'reload') {
+      // Full data reload
+      fetchAll();
+      showToast('Data reloaded', 'success');
+      log('🔃 Data reloaded', data);
+    }
+  }
+  
+  // Connect WebSocket on page load
+  connectWebSocket();
+  
+  // Load existing dialog
+  loadDialog();
+
+  // Immediately load everything so the table reflects the whole schedule
+  fetchAll();
+
+  function showToast(message, type = 'success') {
+    toastMessage.textContent = message;
+    toast.className = `toast ${type} show`;
+    
+    if (type === 'success') {
+      toastIcon.className = 'fas fa-check-circle';
+    } else if (type === 'error') {
+      toastIcon.className = 'fas fa-exclamation-circle';
+    } else if (type === 'warning') {
+      toastIcon.className = 'fas fa-exclamation-triangle';
+    }
+    
+    setTimeout(() => {
+      toast.classList.remove('show');
+    }, 3000);
+  }
+
+  function log(msg, obj) {
+    const line = obj ? `${msg} ${JSON.stringify(obj)}` : msg;
+    
+    // Only log to console, not to dialog (too noisy)
+    console.log(line);
+    
+    // Only add meaningful events to dialog, filter out noise
+    const meaningfulEvents = [
+      'Live updates connected',
+      'Health check',
+      'Data loaded',
+      'Connected to voice agent',
+      'Disconnected from voice agent',
+      'Tool call',
+      'ERROR'
+    ];
+    
+    const isMeaningful = meaningfulEvents.some(event => 
+      line.toLowerCase().includes(event.toLowerCase())
+    );
+    
+    if (isMeaningful) {
+      addDialogEntry({
+        type: 'system',
+        role: 'system',
+        content: line,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+  
+  function addDialogEntry(entry) {
+    const isEmpty = dialogContainer.querySelector('.dialog-empty');
+    if (isEmpty) {
+      dialogContainer.innerHTML = '';
+    }
+    
+    const entryDiv = document.createElement('div');
+    entryDiv.className = `dialog-entry ${entry.type}`;
+    
+    const timestamp = new Date(entry.timestamp).toLocaleTimeString();
+    let roleDisplay = entry.role;
+    
+    if (entry.type === 'tool_call') {
+      roleDisplay = '🔧 Tool Call';
+    } else if (entry.type === 'tool_error') {
+      roleDisplay = '❌ Tool Error';
+    } else if (entry.type === 'system') {
+      roleDisplay = '📝 System';
+    }
+    
+    let content = `
+      <div class="dialog-header">
+        <span>${roleDisplay}</span>
+        <span>${timestamp}</span>
+      </div>
+      <div class="dialog-content">${entry.content}</div>
+    `;
+    
+    if (entry.tool_name) {
+      content += `
+        <div class="dialog-tool-details">
+          Tool: ${entry.tool_name}
+          ${entry.tool_args ? `<br>Args: ${JSON.stringify(entry.tool_args)}` : ''}
+          ${entry.tool_result ? `<br>Result: ${JSON.stringify(entry.tool_result)}` : ''}
+        </div>
+      `;
+    }
+    
+    entryDiv.innerHTML = content;
+    dialogContainer.appendChild(entryDiv);
+    dialogContainer.scrollTop = dialogContainer.scrollHeight;
+  }
+  
+  function clearDialog() {
+    dialogContainer.innerHTML = '<div class="dialog-empty">Conversation will appear here...</div>';
+  }
+  
+  // Load existing dialog on page load
+  async function loadDialog() {
+    try {
+      const response = await fetch('/dialog');
+      const data = await response.json();
+      
+      if (data.dialog && data.dialog.length > 0) {
+        dialogContainer.innerHTML = '';
+        data.dialog.forEach(entry => addDialogEntry(entry));
+      }
+    } catch (error) {
+      console.error('Failed to load dialog:', error);
+    }
+  }
+
+  function renderTable(items=[]) {
+    currentData = items; // Store for live updates
+    const cardsGrid = document.getElementById('cardsGrid');
+    cardsGrid.innerHTML = "";
+    
+    if (items.length === 0) {
+      cardsGrid.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--muted); grid-column: 1 / -1;">No data found</div>`;
+      return;
+    }
+    
+    // Column headers
+    const columns = [
+      { key: 'td_number', label: 'TD Number' },
+      { key: 'psur_number', label: 'PSUR Number' },
+      { key: 'class', label: 'Class' },
+      { key: 'type', label: 'Type' },
+      { key: 'product_name', label: 'Product Name' },
+      { key: 'catalog_number', label: 'Catalog #' },
+      { key: 'writer', label: 'Writer' },
+      { key: 'email', label: 'Email' },
+      { key: 'start_period', label: 'Start Period' },
+      { key: 'end_period', label: 'End Period' },
+      { key: 'frequency', label: 'Frequency' },
+      { key: 'due_date', label: 'Due Date' },
+      { key: 'status', label: 'Status' },
+      { key: 'canada_needed', label: 'Canada' },
+      { key: 'canada_status', label: 'Canada Status' },
+      { key: 'comments', label: 'Comments' }
+    ];
+    
+    // Create header row
+    columns.forEach(col => {
+      const header = document.createElement('div');
+      header.className = 'grid-header';
+      header.dataset.sort = col.key;
+      header.innerHTML = `${col.label} <i class="fas fa-sort"></i>`;
+      header.onclick = () => sortTable(col.key);
+      cardsGrid.appendChild(header);
+    });
+    
+    // Create cell cards for each row
+    for (const r of items) {
+      columns.forEach(col => {
+        const card = document.createElement('div');
+        card.className = 'report-card';
+        card.dataset.tdNumber = r.td_number || r.row_id;
+        
+        let value = r[col.key] || r[col.key.replace('_', '')] || '';
+        
+        // Special formatting for status
+        if (col.key === 'status' && value) {
+          const statusClass = value.toLowerCase().replace(/\s+/g, '-');
+          card.classList.add('status-cell');
+          card.innerHTML = `<span class="card-status ${statusClass}">${value}</span>`;
+        } else {
+          card.textContent = value;
+        }
+        
+        // Click to expand
+        card.addEventListener('click', () => {
+          card.classList.toggle('expanded');
+        });
+        
+        cardsGrid.appendChild(card);
+      });
+    }
+  }
+
+  function showTableLoading(show) {
+    tableLoading.style.display = show ? 'flex' : 'none';
+  }
+
+  function sortTable(column) {
+    if (sortColumn === column) {
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortColumn = column;
+      sortDirection = 'asc';
+    }
+    
+    const rows = Array.from(tableBody.querySelectorAll('tr'));
+    const columnIndex = Array.from(document.querySelectorAll('#scheduleTable th')).findIndex(th => th.dataset.sort === column);
+    
+    rows.sort((a, b) => {
+      const aValue = a.cells[columnIndex].textContent.trim();
+      const bValue = b.cells[columnIndex].textContent.trim();
+      
+      if (sortDirection === 'asc') {
+        return aValue.localeCompare(bValue);
+      } else {
+        return bValue.localeCompare(aValue);
+      }
+    });
+    
+    tableBody.innerHTML = '';
+    rows.forEach(row => tableBody.appendChild(row));
+    
+    // Update sort icons
+    document.querySelectorAll('#scheduleTable th i').forEach(icon => {
+      icon.className = 'fas fa-sort';
+    });
+    
+    const currentIcon = document.querySelector(`#scheduleTable th[data-sort="${column}"] i`);
+    if (currentIcon) {
+      currentIcon.className = sortDirection === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+    }
+  }
+
+  // Add click event to table headers for sorting
+  document.querySelectorAll('#scheduleTable th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      sortTable(th.dataset.sort);
+    });
+  });
+
+  async function fetchDue() {
+    showTableLoading(true);
+    try {
+      const body = {
+        name: "list_due_items",
+        args: {
+          within_days: Number(withinDays.value),
+          classification: klass.value || null,
+          writer: writer.value || null,
+          status: statusFilter.value || null
+        }
+      };
+      const r = await fetch("/tool", { method:"POST", headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (j.error) {
+        log("ERROR list_due_items:", j.error);
+        showToast(`Error: ${j.error}`, 'error');
+      } else {
+        renderTable(j.items || []);
+        log("list_due_items:", j);
+        showToast(`Loaded ${j.items?.length || 0} items`, 'success');
+      }
+    } catch (error) {
+      log("ERROR list_due_items:", error);
+      showToast(`Error: ${error.message}`, 'error');
+    } finally {
+      showTableLoading(false);
+    }
+  }
+
+  async function testTool() {
+    try {
+      const response = await fetch('/test-tool', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'list_due_items',
+          args: { within_days: 30, classification: 'III' }
+        })
+      });
+      
+      const result = await response.json();
+      console.log('🧪 Test tool result:', result);
+      
+      addDialogEntry({
+        type: 'tool_call',
+        role: 'system',
+        content: 'Test tool call completed',
+        tool_name: 'list_due_items',
+        tool_args: { within_days: 30, classification: 'III' },
+        tool_result: result,
+        timestamp: new Date().toISOString()
+      });
+      
+      if (result.items) {
+        renderTable(result.items);
+        showToast(`Test tool found ${result.items.length} items`, 'success');
+      } else if (result.error) {
+        showToast(`Test tool error: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('🧪 Test tool failed:', error);
+      showToast(`Test tool failed: ${error.message}`, 'error');
+    }
+  }
+
+  async function fetchHealth() {
+    try {
+      const r = await fetch("/schedule/health");
+      const j = await r.json();
+      log("HEALTH:", j);
+      if (!j.exists) {
+        showToast("Schedule file not found: " + j.path, 'error');
+        alert("Schedule file not found: " + j.path);
+      } else {
+        showToast("Health check passed", 'success');
+      }
+    } catch (error) {
+      log("ERROR health:", error);
+      showToast(`Error: ${error.message}`, 'error');
+    }
+  }
+
+  async function fetchSnapshot() {
+    showTableLoading(true);
+    try {
+      const r = await fetch("/schedule/snapshot");
+      const j = await r.json();
+      renderTable(j.items || []);
+      log("snapshot:", j);
+      showToast(`Loaded ${j.items?.length || 0} items`, 'success');
+    } catch (error) {
+      log("ERROR snapshot:", error);
+      showToast(`Error: ${error.message}`, 'error');
+    } finally {
+      showTableLoading(false);
+    }
+  }
+
+  async function updateRow() {
+    if (!u_row.value) {
+      showToast("Please enter a TD Number", 'warning');
+      return;
+    }
+    
+    const updates = {};
+    if (u_status.value) updates.status = u_status.value;
+    if (u_due.value) updates["Due Date"] = u_due.value; // exact header accepted
+    if (u_writer.value) updates.writer = u_writer.value;
+    if (u_comments.value) updates.comments = u_comments.value;
+
+    try {
+      const body = { name:"update_schedule_row", args:{ row_id: String(u_row.value || ""), updates } };
+      const r = await fetch("/tool", { method:"POST", headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const j = await r.json();
+      log("update_schedule_row:", j);
+      if (j.ok) {
+        fetchDue();
+        showToast("Row updated successfully", 'success');
+        // Clear form
+        u_row.value = '';
+        u_status.value = '';
+        u_due.value = '';
+        u_writer.value = '';
+        u_comments.value = '';
+      } else if (j.error) {
+        showToast(`Error: ${j.error}`, 'error');
+        alert(j.error);
+      }
+    } catch (error) {
+      log("ERROR update_schedule_row:", error);
+      showToast(`Error: ${error.message}`, 'error');
+    }
+  }
+
+  async function findReports() {
+    if (!q.value) {
+      showToast("Please enter a search query", 'warning');
+      return;
+    }
+    
+    showTableLoading(true);
+    try {
+      const body = { name:"find_reports", args:{ query: q.value || "", limit: 500 } };
+      const r = await fetch("/tool", { method:"POST", headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const j = await r.json();
+      renderTable(j.items || []);
+      log("find_reports:", j);
+      showToast(`Found ${j.items?.length || 0} items`, 'success');
+    } catch (error) {
+      log("ERROR find_reports:", error);
+      showToast(`Error: ${error.message}`, 'error');
+    } finally {
+      showTableLoading(false);
+    }
+  }
+
+  async function fetchAll() {
+    console.log('🔄 fetchAll called');
+    showTableLoading(true);
+    try {
+      const r = await fetch("/schedule/all");
+      const j = await r.json();
+      console.log('🔄 Received', j.items?.length || 0, 'items from /schedule/all');
+      renderTable(j.items || []);
+      log("all:", {count:j.count});
+      showToast(`Loaded ${j.count || 0} items`, 'success');
+    } catch (error) {
+      console.error('❌ fetchAll error:', error);
+      log("ERROR all:", error);
+      showToast(`Error: ${error.message}`, 'error');
+    } finally {
+      showTableLoading(false);
+    }
+  }
+
+  // Buttons
+  loadBtn.onclick = fetchDue;
+  updateRow && (document.getElementById('updateBtn').onclick = updateRow);
+  healthBtn.onclick = fetchHealth;
+  snapshotBtn.onclick = fetchAll;
+  testToolBtn.onclick = testTool;
+  findBtn.onclick = findReports;
+  document.getElementById('refreshBtn').onclick = async () => {
+    console.log('🔄 Refresh button clicked');
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('spinning');
+    try {
+      await fetchAll();
+      console.log('✅ Refresh completed');
+    } catch (error) {
+      console.error('❌ Refresh error:', error);
+    } finally {
+      setTimeout(() => btn.classList.remove('spinning'), 300);
+    }
+  };
+  q.addEventListener('keydown', e => { if (e.key === 'Enter') findReports(); });
+  clearLogBtn.onclick = async () => { 
+    clearDialog();
+    // Also clear on server
+    try {
+      await fetch('/dialog/clear', { method: 'POST' });
+    } catch (error) {
+      console.error('Failed to clear dialog on server:', error);
+    }
+  };
+
+  // Simulate audio level
+  function simulateAudioLevel() {
+    if (localStream && localStream.active) {
+      // In a real implementation, you would analyze the audio stream
+      const level = Math.random() * 100;
+      audioLevelBar.style.width = `${level}%`;
+    } else {
+      audioLevelBar.style.width = '0%';
+    }
+    requestAnimationFrame(simulateAudioLevel);
+  }
+  simulateAudioLevel();
+
+  // WebRTC
+  async function connect() {
+    try {
+      statusEl.textContent = "fetching session…";
+      statusEl.className = "pill connecting";
+      connectionStatus.textContent = "Connecting...";
+      
+      const sessionRes = await fetch("/session", { method: "POST" });
+      const sessionJson = await sessionRes.json();
+      if (!sessionRes.ok) throw new Error(JSON.stringify(sessionJson));
+      const EK = sessionJson?.client_secret?.value;
+      const MODEL = sessionJson?.model || "gpt-4o-realtime-preview";
+      if (!EK) throw new Error("No ephemeral key from /session");
+
+      pc = new RTCPeerConnection();
+      pc.oniceconnectionstatechange = () => {
+        log("ice:", pc.iceConnectionState);
+        if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+          connectionStatus.textContent = "Connected";
+        } else if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+          connectionStatus.textContent = "Disconnected";
+        }
+      };
+      pc.onconnectionstatechange = () => log("pc state:", pc.connectionState);
+      pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; audioEl.play().catch(()=>{}); };
+
+      dataChannel = pc.createDataChannel("oai-events");
+      dataChannel.onopen = () => {
+        console.log('📡 Data channel opened');
+        statusEl.textContent = "connected";
+        statusEl.className = "pill connected";
+        showToast("Connected to voice agent", 'success');
+        
+        addDialogEntry({
+          type: 'system',
+          role: 'system',
+          content: 'Connected to PSUR-OPS voice agent - ready to speak!',
+          timestamp: new Date().toISOString()
+        });
+      };
+
+      dataChannel.onmessage = (ev) => {
+        try {
+          const evt = JSON.parse(ev.data);
+          
+          // Log all events to console for debugging, but filter what goes to dialog
+          if (evt?.type) {
+            // Only log meaningful events, not the noisy delta events
+            if (!evt.type.includes('audio_transcript.delta') && 
+                !evt.type.includes('rate_limits') &&
+                !evt.type.includes('function_call_arguments.delta')) {
+              console.log('WebRTC Event:', evt.type, evt);
+              
+              // Log specific events we're interested in
+              if (evt.type.includes('response.') || evt.type.includes('conversation.')) {
+                console.log('🎯 Key Event:', evt.type, evt);
+              }
+            }
+          }
+
+          // Handle function calls - OpenAI Realtime API format
+          if (evt?.type === "response.function_call_arguments.done") {
+            const callId = evt.call_id;
+            const name = evt.name;
+            const args = evt.arguments ? JSON.parse(evt.arguments) : {};
+            
+            console.log('🔧 Function call detected:', { callId, name, args });
+            
+            // Add tool call to dialog
+            addDialogEntry({
+              type: 'tool_call',
+              role: 'system',
+              content: `Calling ${name}`,
+              tool_name: name,
+              tool_args: args,
+              timestamp: new Date().toISOString()
+            });
+            
+            fetch("/tool", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ call_id: callId, name, args })
+            })
+            .then(r => r.json())
+            .then(result => {
+              console.log('🔧 Tool result:', result);
+              
+              // Send tool result back to realtime API - CORRECTED FORMAT
+              const toolResult = {
+                type: "conversation.item.create",
+                item: {
+                  type: "function_call_output",
+                  call_id: callId,
+                  output: JSON.stringify(result)
+                }
+              };
+              dataChannel.send(JSON.stringify(toolResult));
+              
+              // Generate response after tool result
+              const responseCreate = {
+                type: "response.create",
+                response: {
+                  modalities: ["text", "audio"],
+                  instructions: "Use the tool result to answer the user's question. Be concise and include key details like TD/PSUR number, due date, status, and writer."
+                }
+              };
+              dataChannel.send(JSON.stringify(responseCreate));
+              
+              // Update table for any operation that returns items
+              if (result.items && Array.isArray(result.items) && result.items.length > 0) {
+                console.log('🔄 Updating UI with', result.items.length, 'items from tool:', name);
+                renderTable(result.items);
+              } else if (name.includes('update') || name.includes('assign') || name.includes('change') || name === 'set_status' || name === 'set_writer' || name === 'set_due_date' || name === 'update_report') {
+                // For update operations, FORCE reload immediately
+                console.log('🔄 UPDATE DETECTED - Force reloading in 200ms');
+                setTimeout(async () => {
+                  console.log('🔄 EXECUTING FORCED RELOAD NOW');
+                  await fetchAll();
+                  console.log('✅ FORCED RELOAD COMPLETE');
+                }, 200);
+              } else {
+                console.log('🔄 Tool result:', name, '- No items array to display');
+              }
+              
+              // Add tool result to dialog
+              addDialogEntry({
+                type: 'tool_call',
+                role: 'system',
+                content: `Tool ${name} completed`,
+                tool_name: name,
+                tool_result: result,
+                timestamp: new Date().toISOString()
+              });
+            })
+            .catch(err => {
+              console.error('🔧 Tool error:', err);
+              const errorResult = {
+                type: "conversation.item.create",
+                item: {
+                  type: "function_call_output",
+                  call_id: callId,
+                  output: JSON.stringify({ error: String(err) })
+                }
+              };
+              dataChannel.send(JSON.stringify(errorResult));
+              
+              // Still try to generate a response even on error
+              const responseCreate = {
+                type: "response.create",
+                response: {
+                  modalities: ["text", "audio"],
+                  instructions: "There was an error with the tool call. Acknowledge this and suggest trying again."
+                }
+              };
+              dataChannel.send(JSON.stringify(responseCreate));
+              
+              // Add error to dialog
+              addDialogEntry({
+                type: 'tool_error',
+                role: 'system',
+                content: `Tool ${name} failed: ${err}`,
+                tool_name: name,
+                timestamp: new Date().toISOString()
+              });
+            });
+          }
+
+          // Handle user speech transcription
+          if (evt?.type === "conversation.item.input_audio_transcription.completed") {
+            const userText = evt?.transcript || "";
+            if (userText.trim().length) {
+              console.log('👤 User said:', userText);
+              // Add user message to dialog
+              addDialogEntry({
+                type: 'message',
+                role: 'user',
+                content: userText,
+                timestamp: new Date().toISOString()
+              });
+            }
+          }
+          
+          // Handle assistant audio transcription
+          if (evt?.type === "response.audio_transcript.done") {
+            const assistantText = evt?.transcript || "";
+            if (assistantText.trim().length) {
+              console.log('🤖 Assistant said:', assistantText);
+              // Add assistant response to dialog
+              addDialogEntry({
+                type: 'message',
+                role: 'assistant',
+                content: assistantText,
+                timestamp: new Date().toISOString()
+              });
+            }
+          }
+          
+          // Handle session creation to confirm connection
+          if (evt?.type === "session.created") {
+            addDialogEntry({
+              type: 'system',
+              role: 'system',
+              content: 'Voice agent session created - ready to speak!',
+              timestamp: new Date().toISOString()
+            });
+          }
+          
+        } catch (e) { 
+          console.log('Failed to parse WebRTC message:', e);
+        }
+      };
+
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      for (const t of localStream.getAudioTracks()) pc.addTrack(t, localStream);
+
+      statusEl.textContent = "starting webrtc…";
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const url = `https://api.openai.com/v1/realtime?model=${encodeURIComponent(MODEL)}`;
+      const sdpRes = await fetch(url, {
+        method: "POST",
+        body: offer.sdp,
+        headers: { "Authorization": `Bearer ${EK}`, "Content-Type": "application/sdp", "OpenAI-Beta": "realtime=v1" }
+      });
+      if (!sdpRes.ok) throw new Error(`SDP POST failed: ${sdpRes.status} ${await sdpRes.text()}`);
+      const answer = await sdpRes.text();
+      await pc.setRemoteDescription({ type: "answer", sdp: answer });
+
+      connectBtn.disabled = true;
+      hangupBtn.disabled = false;
+      statusEl.textContent = "ready — speak";
+      statusEl.className = "pill connected";
+      connectionStatus.textContent = "Ready to speak";
+
+      // Immediately show a snapshot so the table isn't empty
+      fetchSnapshot();
+    } catch (err) {
+      log("ERROR connect:", err);
+      statusEl.textContent = "error";
+      statusEl.className = "pill error";
+      connectionStatus.textContent = "Connection error";
+      showToast(`Connection error: ${err.message}`, 'error');
+      await hangup();
+    }
+  }
+
+  async function hangup() {
+    try {
+      if (dataChannel) dataChannel.close();
+      if (pc) pc.close();
+      if (localStream) localStream.getTracks().forEach(t => t.stop());
+    } finally {
+      connectBtn.disabled = false;
+      hangupBtn.disabled = true;
+      statusEl.textContent = "idle";
+      statusEl.className = "pill idle";
+      connectionStatus.textContent = "Not connected";
+      log("🔚 disconnected");
+      showToast("Disconnected from voice agent", 'success');
+    }
+  }
+
+  connectBtn.onclick = connect;
+  hangupBtn.onclick = hangup;
+})();
+</script>
+</body>
+</html>
