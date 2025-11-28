@@ -353,23 +353,165 @@ export const linkReferences = mutation({
       .query("psur_reports")
       .withIndex("by_td_number", (q) => q.eq("td_number", args.tdNumber))
       .first();
-    
+
     if (!record) {
       return false;
     }
-    
+
     const now = new Date().toISOString();
     const updates: any = { updated_at: now, version: (record.version || 1) + 1 };
-    
+
     if (args.mastercontrolUrl) {
       updates.mastercontrol_url = args.mastercontrolUrl;
     }
     if (args.sharepointUrl) {
       updates.sharepoint_url = args.sharepointUrl;
     }
-    
+
     await ctx.db.patch(record._id, updates);
-    
+
     return true;
+  },
+});
+
+// Auto-generate next surveillance period schedule
+export const generateNextSchedule = mutation({
+  args: {
+    closedTdNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Get the closed PSUR record
+    const closedRecord = await ctx.db
+      .query("psur_reports")
+      .withIndex("by_td_number", (q) => q.eq("td_number", args.closedTdNumber))
+      .first();
+
+    if (!closedRecord) {
+      return { error: "Closed PSUR not found", success: false };
+    }
+
+    // Calculate next period dates based on device class and regulatory requirements
+    const calculateNextPeriod = (endPeriod: string | undefined, deviceClass: string | undefined, frequency: string | undefined) => {
+      if (!endPeriod) return { start: undefined, end: undefined, due: undefined };
+
+      const endDate = new Date(endPeriod);
+      const startDate = new Date(endDate);
+      startDate.setDate(startDate.getDate() + 1); // Start day after previous period ends
+
+      // Determine cycle length based on device class (EU MDR & UKCA rules)
+      const classLower = (deviceClass || "").toLowerCase();
+      const freqLower = (frequency || "").toLowerCase();
+
+      let years = 1; // Default to annual
+
+      // Class-based rules (EU MDR & UKCA)
+      if (classLower.includes("iia") || classLower.includes("ii a")) {
+        years = 2; // Biennial for Class IIa
+      } else if (freqLower.includes("bienn")) {
+        years = 2;
+      } else if (freqLower.includes("5")) {
+        years = 5;
+      }
+      // Class I, IIb, III default to annual (1 year)
+
+      const newEndDate = new Date(startDate);
+      newEndDate.setFullYear(newEndDate.getFullYear() + years);
+      newEndDate.setDate(newEndDate.getDate() - 1); // End period is inclusive
+
+      // Due date: typically end of period + buffer (e.g., 90 days for submission)
+      const dueDate = new Date(newEndDate);
+      dueDate.setDate(dueDate.getDate() + 90); // 90-day buffer for compilation and submission
+
+      return {
+        start: startDate.toISOString().split('T')[0],
+        end: newEndDate.toISOString().split('T')[0],
+        due: dueDate.toISOString().split('T')[0],
+      };
+    };
+
+    const nextPeriod = calculateNextPeriod(
+      closedRecord.end_period,
+      closedRecord.class,
+      closedRecord.frequency
+    );
+
+    // Generate new TD number
+    const all = await ctx.db.query("psur_reports").collect();
+    const tdNumbers = all
+      .map(r => r.td_number)
+      .filter(td => /^TD\d+$/.test(td))
+      .map(td => parseInt(td.substring(2)));
+
+    const maxTd = tdNumbers.length > 0 ? Math.max(...tdNumbers) : 0;
+    const newTdNumber = `TD${String(maxTd + 1).padStart(3, '0')}`;
+
+    // Increment PSUR number if exists
+    let newPsurNumber = undefined;
+    if (closedRecord.psur_number) {
+      const psurMatch = closedRecord.psur_number.match(/PSUR(\d+)/);
+      if (psurMatch) {
+        const psurNum = parseInt(psurMatch[1]) + 1;
+        newPsurNumber = `PSUR${String(psurNum).padStart(3, '0')}`;
+      }
+    }
+
+    const now = new Date().toISOString();
+    const year = new Date(nextPeriod.start || now).getFullYear();
+
+    // Create new schedule for next period
+    const newSchedule = {
+      td_number: newTdNumber,
+      psur_number: newPsurNumber,
+      class: closedRecord.class,
+      type: closedRecord.type,
+      product_name: closedRecord.product_name,
+      catalog_number: closedRecord.catalog_number,
+      writer: closedRecord.writer,
+      email: closedRecord.email,
+      start_period: nextPeriod.start,
+      end_period: nextPeriod.end,
+      frequency: closedRecord.frequency,
+      due_date: nextPeriod.due,
+      status: "Not started", // New schedule starts as "Not started"
+      canada_needed: closedRecord.canada_needed,
+      canada_status: undefined, // Reset Canada status for new period
+      comments: `Auto-generated from ${args.closedTdNumber} on ${now.split('T')[0]}. Previous period: ${closedRecord.start_period} to ${closedRecord.end_period}`,
+      parent_td_number: args.closedTdNumber,
+      auto_generated: true,
+      created_at: now,
+      updated_at: now,
+      version: 1,
+    };
+
+    const newId = await ctx.db.insert("psur_reports", newSchedule);
+
+    return {
+      success: true,
+      new_td_number: newTdNumber,
+      new_psur_number: newPsurNumber,
+      year: year,
+      id: newId,
+    };
+  },
+});
+
+// Query to get auto-generated schedules
+export const getAutoGeneratedSchedules = query({
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("psur_reports")
+      .withIndex("by_auto_generated", (q) => q.eq("auto_generated", true))
+      .collect();
+  },
+});
+
+// Query to get child schedules for a parent TD
+export const getChildSchedules = query({
+  args: { parentTdNumber: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("psur_reports")
+      .withIndex("by_parent_td", (q) => q.eq("parent_td_number", args.parentTdNumber))
+      .collect();
   },
 });
