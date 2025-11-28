@@ -1,1 +1,20 @@
-{"version": 2, "builds": [{"src": "package.json", "use": "@vercel/static-build", "config": {"distDir": "public"}}], "functions": {"api/**/*.py": {"runtime": "python3.12", "maxDuration": 30}}, "installCommand": "pip install --no-cache-dir -r requirements.txt", "outputDirectory": "public", "excludeFiles": ["__pycache__/**", "*.pyc", "node_modules/**", "data/**", "*.xlsx", "*.xls", "docs/**", "backend/**", "test_*.py", "check_schema.py", "migrate_to_convex.py", "populate_convex.py", "main.py"]}
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "public"
+      }
+    }
+  ],
+  "functions": {
+    "api/**/*.py": {
+      "runtime": "python3.12",
+      "maxDuration": 30
+    }
+  },
+  "installCommand": "pip install --no-cache-dir -r requirements.txt",
+  "outputDirectory": "public"
+}
