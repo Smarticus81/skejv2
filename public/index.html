@@ -176,7 +176,57 @@
       transform: none;
       background: var(--primary);
     }
-    
+
+    /* Schedule Tabs */
+    .schedule-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 8px 16px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: -2px;
+      position: relative;
+    }
+
+    .tab-btn:hover {
+      color: var(--fg);
+      background: rgba(255, 255, 255, 0.05);
+      transform: none;
+    }
+
+    .tab-btn.active {
+      color: var(--acc);
+      border-bottom-color: var(--acc);
+      background: transparent;
+    }
+
+    .tab-badge {
+      display: inline-block;
+      background: var(--acc);
+      color: #000;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    .tab-btn.active .tab-badge {
+      background: var(--acc);
+    }
+
     table { 
       width:100%; 
       border-collapse:collapse; 
@@ -780,6 +830,17 @@
         <i class="fas fa-sync-alt"></i> Refresh
       </button>
     </div>
+
+    <!-- Schedule Tabs -->
+    <div class="schedule-tabs">
+      <button class="tab-btn active" data-tab="all">
+        <i class="fas fa-list"></i> All Schedules
+      </button>
+      <button class="tab-btn" data-tab="auto-generated">
+        <i class="fas fa-magic"></i> Auto-Generated (2026+)
+        <span class="tab-badge" id="autoGenCount">0</span>
+      </button>
+    </div>
     
     <div class="form-group">
       <div class="row">
@@ -988,10 +1049,24 @@
       // Add new record - FORCE FULL RELOAD
       console.log(`➕ WebSocket add received for ${data.td_number}`);
       console.log('🔄 FORCING FULL DATA RELOAD');
-      
+
       fetchAll();
       showToast(`Added ${data.td_number}`, 'success');
       log(`➕ Live add: ${data.td_number}`, data.record);
+    } else if (type === 'auto_schedule') {
+      // Auto-generated schedule created
+      console.log(`✨ Auto-generated schedule created: ${data.new_td} from ${data.parent_td}`);
+
+      fetchAll();
+      showToast(`✨ Auto-generated ${data.new_td} (${data.year})`, 'success');
+      log(`✨ Auto-schedule: ${data.new_td} from ${data.parent_td} (year ${data.year})`);
+
+      // Optionally switch to auto-generated tab to show the new schedule
+      setTimeout(() => {
+        if (confirm(`Auto-generated schedule ${data.new_td} created for ${data.year}. View auto-generated schedules?`)) {
+          switchTab('auto-generated');
+        }
+      }, 1000);
     } else if (type === 'reload') {
       // Full data reload
       fetchAll();
@@ -1165,23 +1240,36 @@
         const card = document.createElement('div');
         card.className = 'report-card';
         card.dataset.tdNumber = r.td_number || r.row_id;
-        
+
+        // Add auto-generated indicator to TD Number column
+        if (col.key === 'td_number' && r.auto_generated) {
+          card.classList.add('auto-generated-row');
+        }
+
         let value = r[col.key] || r[col.key.replace('_', '')] || '';
-        
+
+        // Special formatting for TD Number with auto-generated indicator
+        if (col.key === 'td_number' && r.auto_generated) {
+          card.innerHTML = `<i class="fas fa-magic" style="color: var(--acc); margin-right: 4px;" title="Auto-generated"></i>${value}`;
+        }
         // Special formatting for status
-        if (col.key === 'status' && value) {
+        else if (col.key === 'status' && value) {
           const statusClass = value.toLowerCase().replace(/\s+/g, '-');
           card.classList.add('status-cell');
           card.innerHTML = `<span class="card-status ${statusClass}">${value}</span>`;
+        }
+        // Show parent TD in comments if auto-generated
+        else if (col.key === 'comments' && r.auto_generated && r.parent_td_number) {
+          card.innerHTML = `<i class="fas fa-link" style="color: var(--muted); margin-right: 4px;" title="Parent: ${r.parent_td_number}"></i>${value}`;
         } else {
           card.textContent = value;
         }
-        
+
         // Click to expand
         card.addEventListener('click', () => {
           card.classList.toggle('expanded');
         });
-        
+
         cardsGrid.appendChild(card);
       });
     }
@@ -1391,6 +1479,49 @@
     }
   }
 
+  // Tab management
+  let currentTab = 'all';
+  let allData = [];
+
+  function updateAutoGenCount() {
+    const autoGenItems = allData.filter(item => item.auto_generated === true);
+    const badge = document.getElementById('autoGenCount');
+    if (badge) {
+      badge.textContent = autoGenItems.length;
+    }
+  }
+
+  function filterDataByTab(tab) {
+    if (tab === 'auto-generated') {
+      return allData.filter(item => item.auto_generated === true);
+    }
+    return allData;
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.querySelector(`.tab-btn[data-tab="${tab}"]`)?.classList.add('active');
+
+    // Filter and render data
+    const filteredData = filterDataByTab(tab);
+    renderTable(filteredData);
+
+    console.log(`📑 Switched to ${tab} tab, showing ${filteredData.length} items`);
+  }
+
+  // Add click handlers to tab buttons
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      switchTab(tab);
+    });
+  });
+
   async function fetchAll() {
     console.log('🔄 fetchAll called');
     showTableLoading(true);
@@ -1398,7 +1529,17 @@
       const r = await fetch("/schedule/all");
       const j = await r.json();
       console.log('🔄 Received', j.items?.length || 0, 'items from /schedule/all');
-      renderTable(j.items || []);
+
+      // Store all data globally
+      allData = j.items || [];
+
+      // Update auto-generated count badge
+      updateAutoGenCount();
+
+      // Filter and render based on current tab
+      const filteredData = filterDataByTab(currentTab);
+      renderTable(filteredData);
+
       log("all:", {count:j.count});
       showToast(`Loaded ${j.count || 0} items`, 'success');
     } catch (error) {

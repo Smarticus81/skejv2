@@ -512,7 +512,7 @@ async def tool_entry(payload: Dict[str, Any] = Body(...)):
                 }
             if not row_id:
                 return {"error": "row_id (TD Number) required"}
-            
+
             # Canonicalize field names
             canonical_updates = {}
             for key, value in updates.items():
@@ -523,13 +523,37 @@ async def tool_entry(payload: Dict[str, Any] = Body(...)):
                         canonical_key = canon
                         break
                 canonical_updates[canonical_key] = value
-            
+
             if not canonical_updates:
                 return {"error": "No valid fields provided to update"}
             success = store.update_record(row_id, canonical_updates)
             if not success:
                 return {"error": f"TD Number {row_id} not found"}
-            
+
+            # Auto-generate next schedule if status changed to Released or Completed
+            new_status = canonical_updates.get("status", "").strip()
+            if new_status.lower() in ["released", "completed"]:
+                # Check if record has the required fields for auto-generation
+                record = store.find_by_td(row_id)
+                if record and record.get("end_period"):
+                    # Check if next schedule already exists
+                    child_schedules = store.get_child_schedules(row_id)
+                    if not child_schedules:
+                        # Generate next schedule
+                        result = store.generate_next_schedule(row_id)
+                        if result and result.get("success"):
+                            print(f"✅ Auto-generated next schedule: {result.get('new_td_number')} (year {result.get('year')})")
+                            # Broadcast the new schedule creation
+                            await broadcast_update("auto_schedule", {
+                                "parent_td": row_id,
+                                "new_td": result.get("new_td_number"),
+                                "year": result.get("year")
+                            })
+                        else:
+                            print(f"⚠️  Failed to auto-generate next schedule for {row_id}: {result}")
+                    else:
+                        print(f"ℹ️  Next schedule already exists for {row_id}")
+
             # Broadcast update to connected clients
             await broadcast_update("update", {"td_number": row_id, "updates": canonical_updates})
             return {"ok": True}

@@ -37,7 +37,11 @@ export default defineSchema({
     comments: v.optional(v.string()),
     mastercontrol_url: v.optional(v.string()),
     sharepoint_url: v.optional(v.string()),
-    
+
+    // Auto-generation tracking
+    parent_td_number: v.optional(v.string()), // Links to previous period's TD
+    auto_generated: v.optional(v.boolean()),  // Flag for auto-created schedules
+
     // Metadata
     created_at: v.optional(v.string()),
     updated_at: v.optional(v.string()),
@@ -49,5 +53,7 @@ export default defineSchema({
     .index("by_writer", ["writer"])
     .index("by_status", ["status"])
     .index("by_class", ["class"])
-    .index("by_due_date", ["due_date"]),
+    .index("by_due_date", ["due_date"])
+    .index("by_parent_td", ["parent_td_number"])
+    .index("by_auto_generated", ["auto_generated"]),
 });
